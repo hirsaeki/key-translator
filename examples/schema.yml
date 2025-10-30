@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: customers
+    description: "Customer dimension table containing current state of all customers"
+    columns:
+      - name: customer_id
+        description: "Primary key for customers"
+        tests:
+          - unique
+          - not_null
+
+      - name: first_name
+        description: "Customer's first name"
+
+      - name: last_name
+        description: "Customer's last name"
+
+      - name: email
+        description: "Customer's email address"
+        tests:
+          - unique
+
+      - name: created_at
+        description: "Timestamp when customer account was created"
+
+  - name: orders
+    description: |
+      Order fact table containing one row per order.
+
+      This table includes:
+      - Order details and status
+      - Customer references
+      - Financial metrics
+
+    columns:
+      - name: order_id
+        description: "Primary key for orders"
+        tests:
+          - unique
+          - not_null
+
+      - name: customer_id
+        description: "Foreign key to customers table"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('customers')
+              field: customer_id
+
+      - name: order_date
+        description: "Date when order was placed"
+
+      - name: status
+        description: "Current order status (pending, shipped, delivered, cancelled)"
+
+      - name: amount
+        description: "Total order amount in USD"
+
+sources:
+  - name: postgres
+    description: "PostgreSQL production database"
+    schema: public
+    tables:
+      - name: raw_customers
+        description: "Raw customer data from application database"
+
+      - name: raw_orders
+        description: "Raw order data from application database"

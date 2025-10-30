@@ -1,5 +1,6 @@
 import typescriptEslint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
+import security from "eslint-plugin-security";
 
 export default [{
     files: ["**/*.ts"],
@@ -25,4 +26,6 @@ export default [{
         "no-throw-literal": "warn",
         semi: "warn",
     },
-}];
+},
+    security.configs.recommended,
+];

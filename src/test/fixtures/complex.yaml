@@ -1,0 +1,60 @@
+version: 2
+
+models:
+  - name: orders
+    description: |
+      This is a detailed description
+      spanning multiple lines.
+      It contains important information.
+    
+  - name: payments
+    description: >
+      This is a folded block
+      that will be rendered
+      as a single line.
+
+  - name: dim_customers
+    description: |
+      Customer dimension table with slowly changing dimensions.
+      
+      This table tracks:
+      - Customer demographics
+      - Contact information
+      - Lifetime value metrics
+    
+    columns:
+      - name: customer_key
+        description: "Surrogate key"
+        tests:
+          - unique
+          - not_null
+      
+      - name: customer_id
+        description: "Natural key from source"
+        
+      - name: first_name
+        description: "First name"
+        
+      - name: last_name
+        description: "Last name"
+        
+      - name: email
+        description: 'A string with a "double" quote.'
+        tests:
+          - unique
+          
+      - name: created_at
+        description: "A string with a 'single' quote."
+
+      - name: status
+        description: "Part 1: The beginning"
+
+sources:
+  - name: postgres
+    description: "PostgreSQL production database"
+    tables:
+      - name: users
+        description: "Application users table"
+        
+      - name: orders
+        description: "E-commerce orders"

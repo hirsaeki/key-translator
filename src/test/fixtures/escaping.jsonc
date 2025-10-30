@@ -1,0 +1,14 @@
+{
+  "name": "test_json",
+  "description": "A JSON file for testing escaping",
+  "na": {
+    // The translation for this will be: 一个带有"引号"的字符串
+    "description": "A string with a double quote"
+  },
+  /*
+   * The translation for this block comment will also contain "quotes".
+   */
+  "ma": {
+    "description": "A string with a backslash character"
+  }
+}

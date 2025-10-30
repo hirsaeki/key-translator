@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: staging_orderss
+    description: "Staging tassbles for {{ source('raw', 'orders') }}"
+
+  - name: intermediate_orders
+    description: "Clean orders data"
+
+    # Need to be checked
+sources:
+  - name: raw
+    database: "{{ env_var('DBT_DATABASE') }}"
+    schema: raw_data
+    description: "Raw data from production"
