@@ -1,11 +1,24 @@
+# Ignore development files
 .vscode/**
 .vscode-test/**
 src/**
+node_modules/**
+out/**
+.github/**
+
+# Ignore configuration files
 .gitignore
-.yarnrc
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
+.npmrc
+eslint.config.mjs
+tsconfig.json
+
+# Ignore build artifacts that are not needed
 **/*.map
-**/*.ts
-**/.vscode-test.*
+
+# Allow specific files
+!/package.json
+!/README.md
+!/LICENSE.txt
+!/extension/out/extension.js
+!/image/icon.png
+!/image/translation_preview.png

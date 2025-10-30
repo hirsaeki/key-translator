@@ -2,40 +2,271 @@
   "name": "key-translator",
   "displayName": "Key Translator",
   "description": "Translate values for specific keys in YAML or JSON files with a read-only preview.",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "publisher": "yingqi",
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
-  "main": "./out/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yingyingqiqi/key-translator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yingyingqiqi/key-translator/issues"
+  },
+  "homepage": "https://github.com/yingyingqiqi/key-translator#readme",
+  "icon": "image/icon.png",
+  "activationEvents": [
+    "onLanguage:yaml",
+    "onLanguage:json",
+    "onLanguage:jsonc"
+  ],
+  "main": "./extension/out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "key-translator.helloWorld",
-        "title": "Hello World"
+        "command": "keyTranslator.translateFile",
+        "title": "Translate File",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "keyTranslator.copyPreview",
+        "title": "Copy Translation to Clipboard",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "keyTranslator.openDiff",
+        "title": "Open Diff with Original",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "keyTranslator.refresh",
+        "title": "Refresh Translation",
+        "icon": "$(refresh)"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "keyTranslator.translateFile",
+          "when": "resourceLangId == yaml || resourceLangId == json || resourceLangId == jsonc",
+          "group": "navigation"
+        },
+        {
+          "command": "keyTranslator.copyPreview",
+          "when": "resourceScheme == key-translator-preview",
+          "group": "navigation"
+        },
+        {
+          "command": "keyTranslator.openDiff",
+          "when": "resourceScheme == key-translator-preview",
+          "group": "navigation"
+        },
+        {
+          "command": "keyTranslator.refresh",
+          "when": "resourceScheme == key-translator-preview",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Key Translator",
+      "properties": {
+        "keyTranslator.provider": {
+          "type": "string",
+          "default": "mock",
+          "enum": [
+            "macos_shortcuts",
+            "openai",
+            "google",
+            "tencent",
+            "mock"
+          ],
+          "description": "Translation provider to use"
+        },
+        "keyTranslator.macos.shortcutsName": {
+          "type": "string",
+          "default": "Key.Translate",
+          "description": "Name of the macOS Shortcuts to use for translation. You can get shortcut instructions from: https://www.icloud.com/shortcuts/028921c9c833428ab08d3556fd9aef22"
+        },
+        "keyTranslator.openai.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API Key (for compatible LLMs)"
+        },
+        "keyTranslator.openai.model": {
+          "type": "string",
+          "default": "gpt-3.5-turbo",
+          "description": "OpenAI model to use (for compatible LLMs)"
+        },
+        "keyTranslator.openai.apiUrl": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API URL (for compatible LLMs)"
+        },
+        "keyTranslator.google.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Google Cloud Translation API Key"
+        },
+        "keyTranslator.tencent.secretId": {
+          "type": "string",
+          "default": "",
+          "description": "Tencent Cloud Secret ID"
+        },
+        "keyTranslator.tencent.secretKey": {
+          "type": "string",
+          "default": "",
+          "description": "Tencent Cloud Secret Key"
+        },
+        "keyTranslator.keysToTranslate": {
+          "type": "array",
+          "default": [
+            "description"
+          ],
+          "description": "List of keys to translate"
+        },
+        "keyTranslator.keyMatchMode": {
+          "type": "string",
+          "default": "exact",
+          "enum": [
+            "exact",
+            "contains",
+            "regex"
+          ],
+          "description": "How to match keys"
+        },
+        "keyTranslator.sourceLanguage": {
+          "type": "string",
+          "default": "English",
+          "description": "The source language for translation."
+        },
+        "keyTranslator.targetLanguage": {
+          "type": "string",
+          "default": "Chinese",
+          "description": "The target language for translation."
+        },
+        "keyTranslator.translateComments": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to translate comments"
+        },
+        "keyTranslator.skipPatterns": {
+          "type": "array",
+          "default": [
+            "{{",
+            "{%",
+            "}}",
+            "%}",
+            "${"
+          ],
+          "description": "An array of string patterns to detect for skipping translation. If a value contains any of these patterns, it will not be translated."
+        },
+        "keyTranslator.cache.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable translation cache"
+        },
+        "keyTranslator.cache.scope": {
+          "type": "string",
+          "default": "global",
+          "enum": [
+            "global",
+            "workspace"
+          ],
+          "description": "Cache scope"
+        },
+        "keyTranslator.cache.maxEntries": {
+          "type": "number",
+          "default": 10000,
+          "description": "Maximum cache entries"
+        },
+        "keyTranslator.providerOptions.maxBatchSize": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum batch size for translation"
+        },
+        "keyTranslator.providerOptions.concurrency": {
+          "type": "number",
+          "default": 3,
+          "description": "Maximum concurrent translation requests"
+        },
+        "keyTranslator.providerOptions.retries": {
+          "type": "number",
+          "default": 3,
+          "description": "Number of retries for failed translations"
+        },
+        "keyTranslator.providerOptions.timeoutMs": {
+          "type": "number",
+          "default": 20000,
+          "description": "Timeout for translation requests in milliseconds"
+        },
+        "keyTranslator.promptSettings.systemPrompt": {
+          "type": "string",
+          "default": "You are a professional {{to}} native translator who translates text from {{from}} into {{to}}.\nRules:\n1. Output ONLY the JSON object required by the user—no explanations, no text, no YAML, no markdown, no code fences.\n2. Preserve proper nouns, code, URLs, and any text that should not be translated (keep original).\n3. Keep meaning faithful and make translation natural and fluent.\n4. Preserve the original ID values and ordering.\n5. If the user provided a single text string, treat it as a single-item translation list.\n6. Do not add any fields, metadata, or comments.",
+          "description": "The system prompt to use for translation. Use {{from}} and {{to}} as placeholders for source and target languages."
+        },
+        "keyTranslator.promptSettings.userPromptSingle": {
+          "type": "string",
+          "default": "Translate to {{to}} (output translation only):\n\n{{text}}",
+          "description": "The user prompt for a single text translation. Use {{to}} and {{text}} as placeholders."
+        },
+        "keyTranslator.promptSettings.userPromptMulti": {
+          "type": "string",
+          "default": "Translate the `text` fields in the following JSON array from {{from}} to {{to}}. Return a single JSON object with a `translations` key containing an array of the translated objects. Preserve the `id` for each object. Input: {{text}}",
+          "description": "The user prompt for a batch translation. Use {{to}} and {{text}} as placeholders. The {{text}} will be a JSON array."
+        }
+      }
+    }
   },
   "scripts": {
-    "vscode:prepublish": "pnpm run compile",
+    "vscode:prepublish": "pnpm run esbuild-base",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=extension/out/extension.js --external:vscode --format=cjs --platform=node --main-fields=module,main",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "vsce package --no-dependencies",
+    "publish": "vsce publish --no-dependencies",
+    "prepare": "husky install"
   },
   "devDependencies": {
-    "@types/vscode": "^1.105.0",
+    "@secretlint/secretlint-formatter-sarif": "^11.2.5",
+    "@secretlint/secretlint-rule-pattern": "^11.2.5",
+    "@secretlint/secretlint-rule-preset-recommend": "^11.2.5",
+    "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/sinon": "^17.0.0",
+    "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
-    "eslint": "^9.36.0",
-    "typescript": "^5.9.3",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.11",
+    "eslint": "^9.36.0",
+    "eslint-plugin-security": "^3.0.1",
+    "glob": "^10.2.6",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
+    "lru-cache": "^11.2.2",
+    "mocha": "^11.7.4",
+    "prettier": "^3.6.2",
+    "secretlint": "^11.2.5",
+    "sinon": "^18.0.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.2.0",
+    "yaml": "^2.3.1"
+  },
+  "lint-staged": {
+    "*.{ts,js}": "eslint --cache --fix",
+    "*.{ts,js,json,md,yml}": "prettier --write",
+    "**/*": "secretlint"
   }
 }
