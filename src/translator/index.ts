@@ -23,12 +23,10 @@ export async function translateBatch(
       const batch = queue.shift()!;
       const promise = processBatchWithRetry(batch, provider, options, results);
       active.push(promise);
-      promise.finally(() => {
-        const index = active.indexOf(promise);
-        if (index > -1) {
-          active.splice(index, 1);
-        }
-      });
+      void promise.then(
+        () => removeActivePromise(active, promise),
+        () => removeActivePromise(active, promise),
+      );
     }
 
     if (active.length > 0) {
@@ -39,6 +37,13 @@ export async function translateBatch(
   return results;
 }
 
+function removeActivePromise(active: Promise<void>[], promise: Promise<void>) {
+  const index = active.indexOf(promise);
+  if (index > -1) {
+    active.splice(index, 1);
+  }
+}
+
 async function processBatchWithRetry(
   batch: string[],
   provider: TranslationProvider,
@@ -46,8 +51,9 @@ async function processBatchWithRetry(
   results: Map<string, string>,
 ): Promise<void> {
   let lastError: Error | null = null;
+  const attempts = Math.max(1, options.retries);
 
-  for (let attempt = 0; attempt < options.retries; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
     try {
       const batchResults = await Promise.race([
         provider.translateBatch(batch),
@@ -67,7 +73,7 @@ async function processBatchWithRetry(
       return;
     } catch (error) {
       lastError = error as Error;
-      if (attempt < options.retries - 1) {
+      if (attempt < attempts - 1) {
         // Exponential backoff
         const delay = Math.pow(2, attempt) * 500;
         await new Promise((resolve) => setTimeout(resolve, delay));
@@ -75,9 +81,5 @@ async function processBatchWithRetry(
     }
   }
 
-  // All retries failed - log but don't throw (preserve partial results)
-  console.error(
-    `Batch translation failed after ${options.retries} attempts:`,
-    lastError,
-  );
+  throw lastError ?? new Error("Batch translation failed");
 }
