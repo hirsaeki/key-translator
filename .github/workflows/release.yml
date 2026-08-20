@@ -1,0 +1,102 @@
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build VSIX and create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run linter
+        run: pnpm lint
+
+      - name: Compile TypeScript
+        run: pnpm run compile
+
+      - name: Run tests
+        run: xvfb-run -a pnpm test
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          expected_tag="v${package_version}"
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            tag="$GITHUB_REF_NAME"
+            if [[ "$tag" != "$expected_tag" ]]; then
+              echo "Tag $tag does not match package.json version $package_version (expected $expected_tag)." >&2
+              exit 1
+            fi
+          else
+            if [[ "$GITHUB_REF_NAME" != "master" ]]; then
+              echo "Manual releases must be run from master, not $GITHUB_REF_NAME." >&2
+              exit 1
+            fi
+            tag="$expected_tag"
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Package extension
+        run: pnpm run package
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          vsix="$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)"
+          if [[ -z "$vsix" ]]; then
+            echo "No VSIX package was produced." >&2
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists." >&2
+            exit 1
+          fi
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            gh release create "$RELEASE_TAG" "$vsix" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$RELEASE_TAG" \
+              --generate-notes \
+              --verify-tag
+          else
+            gh release create "$RELEASE_TAG" "$vsix" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$RELEASE_TAG" \
+              --generate-notes \
+              --target "$GITHUB_SHA"
+          fi
