@@ -2,7 +2,7 @@
   "name": "key-translator",
   "displayName": "Key Translator",
   "description": "Translate values for specific keys in YAML or JSON files with a read-only preview.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "yingqi",
   "engines": {
     "vscode": "^1.80.0"
