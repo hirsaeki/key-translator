@@ -39,44 +39,40 @@ export class JsonParser implements Parser {
         const valueNode = keyNode.parent?.children?.[1];
 
         if (
-          valueNode &&
-          this.shouldTranslateKey(key, keysToTranslate, keyMatchMode) &&
-          valueNode.type === "string"
+          typeof key !== "string" ||
+          !valueNode ||
+          !this.shouldTranslateKey(key, keysToTranslate, keyMatchMode)
         ) {
-          const value = jsonc.getNodeValue(valueNode);
-          if (
-            value &&
-            typeof value === "string" &&
-            !hasTemplateMarkers(value, skipPatterns)
-          ) {
-            nodes.push({
-              keyPath: path().map((p) => String(p)),
-              key: key,
-              startOffset: valueNode.offset + 1, // Inside quotes
-              endOffset: valueNode.offset + valueNode.length - 1, // Inside quotes
-              originalText: text.substring(
-                valueNode.offset + 1,
-                valueNode.offset + valueNode.length - 1,
-              ),
-              value: value,
-              isBlockScalar: false,
-              quoteType: "double", // JSON strings are always double-quoted
-            });
-          } else if (hasTemplateMarkers(value, skipPatterns)) {
-            nodes.push({
-              keyPath: path().map((p) => String(p)),
-              key: key,
-              startOffset: valueNode.offset + 1,
-              endOffset: valueNode.offset + valueNode.length - 1,
-              originalText: text.substring(
-                valueNode.offset + 1,
-                valueNode.offset + valueNode.length - 1,
-              ),
-              value: value,
-              isBlockScalar: false,
-              quoteType: "double",
-              skipReason: "Contains template markers",
-            });
+          return;
+        }
+
+        const keyPath = path().map((p) => String(p));
+
+        if (valueNode.type === "string") {
+          this.collectStringNode(
+            nodes,
+            text,
+            valueNode,
+            key,
+            keyPath,
+            skipPatterns,
+          );
+          return;
+        }
+
+        if (valueNode.type === "array") {
+          for (const [index, child] of (valueNode.children ?? []).entries()) {
+            if (child.type !== "string") {
+              continue;
+            }
+            this.collectStringNode(
+              nodes,
+              text,
+              child,
+              key,
+              [...keyPath, String(index)],
+              skipPatterns,
+            );
           }
         }
       },
@@ -88,6 +84,40 @@ export class JsonParser implements Parser {
     }
 
     return nodes;
+  }
+
+  private collectStringNode(
+    nodes: NodeInfo[],
+    text: string,
+    valueNode: jsonc.Node,
+    key: string,
+    keyPath: string[],
+    skipPatterns: string[],
+  ): void {
+    const value = jsonc.getNodeValue(valueNode);
+    if (typeof value !== "string" || value.length === 0) {
+      return;
+    }
+
+    const node: NodeInfo = {
+      keyPath,
+      key,
+      startOffset: valueNode.offset + 1,
+      endOffset: valueNode.offset + valueNode.length - 1,
+      originalText: text.substring(
+        valueNode.offset + 1,
+        valueNode.offset + valueNode.length - 1,
+      ),
+      value,
+      isBlockScalar: false,
+      quoteType: "double",
+    };
+
+    if (hasTemplateMarkers(value, skipPatterns)) {
+      node.skipReason = "Contains template markers";
+    }
+
+    nodes.push(node);
   }
 
   private collectCommentNodes(

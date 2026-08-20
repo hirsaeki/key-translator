@@ -1,5 +1,79 @@
 import { TranslationProvider, TranslatorConfig } from "../types";
 
+type BatchTranslation = {
+  id: string | number;
+  text: string;
+};
+
+function stripCodeFence(content: string): string {
+  const trimmed = content.trim();
+  const match = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return match ? match[1].trim() : trimmed;
+}
+
+export function parseBatchTranslationResponse(
+  content: string,
+  texts: string[],
+): Map<string, string> {
+  const parsed = JSON.parse(stripCodeFence(content)) as unknown;
+  let translations: unknown;
+
+  if (Array.isArray(parsed)) {
+    translations = parsed;
+  } else if (parsed && typeof parsed === "object") {
+    translations = (parsed as { translations?: unknown }).translations;
+  }
+
+  if (!Array.isArray(translations)) {
+    throw new Error(
+      "OpenAI batch response must be an array or an object with a translations array",
+    );
+  }
+
+  const byId = new Map<number, string>();
+
+  for (const rawItem of translations) {
+    if (!rawItem || typeof rawItem !== "object") {
+      throw new Error("OpenAI batch response contains a non-object item");
+    }
+
+    const item = rawItem as Partial<BatchTranslation>;
+    const id =
+      typeof item.id === "number"
+        ? item.id
+        : typeof item.id === "string" && /^\d+$/.test(item.id)
+          ? Number(item.id)
+          : Number.NaN;
+
+    if (!Number.isInteger(id) || id < 0 || id >= texts.length) {
+      throw new Error(`OpenAI batch response contains invalid id: ${item.id}`);
+    }
+    if (byId.has(id)) {
+      throw new Error(`OpenAI batch response contains duplicate id: ${id}`);
+    }
+    if (typeof item.text !== "string") {
+      throw new Error(`OpenAI batch response is missing text for id: ${id}`);
+    }
+
+    byId.set(id, item.text);
+  }
+
+  if (byId.size !== texts.length) {
+    const missingIds = texts
+      .map((_, index) => index)
+      .filter((index) => !byId.has(index));
+    throw new Error(
+      `OpenAI batch response is missing translation ids: ${missingIds.join(", ")}`,
+    );
+  }
+
+  const results = new Map<string, string>();
+  for (let index = 0; index < texts.length; index++) {
+    results.set(texts[index], byId.get(index)!);
+  }
+  return results;
+}
+
 export class OpenAIProvider implements TranslationProvider {
   private config: TranslatorConfig;
 
@@ -49,6 +123,7 @@ export class OpenAIProvider implements TranslationProvider {
       };
     } else {
       const userPrompt = this.config.promptSettings.userPromptSingle
+        .replace(/{{from}}/g, from)
         .replace(/{{to}}/g, to)
         .replace(/{{text}}/g, texts[0]);
 
@@ -77,34 +152,17 @@ export class OpenAIProvider implements TranslationProvider {
     }
 
     const data = (await response.json()) as {
-      choices: { message: { content: string } }[];
+      choices?: { message?: { content?: unknown } }[];
     };
-    const content = data.choices[0].message.content.trim();
-
-    const results = new Map<string, string>();
-
-    if (isBatch) {
-      try {
-        const parsed = JSON.parse(content) as {
-          translations: { id: string; text: string }[];
-        };
-        for (const item of parsed.translations) {
-          if (item.id !== undefined && item.text !== undefined) {
-            const originalText = texts[parseInt(item.id, 10)];
-            results.set(originalText, item.text);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to parse JSON response from OpenAI:", error);
-        // Fallback: return original texts
-        for (const text of texts) {
-          results.set(text, text);
-        }
-      }
-    } else {
-      results.set(texts[0], content);
+    const content = data.choices?.[0]?.message?.content;
+    if (typeof content !== "string") {
+      throw new Error("OpenAI API response did not contain message content");
     }
 
-    return results;
+    if (isBatch) {
+      return parseBatchTranslationResponse(content, texts);
+    }
+
+    return new Map([[texts[0], stripCodeFence(content)]]);
   }
 }
