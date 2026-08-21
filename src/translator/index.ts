@@ -54,15 +54,22 @@ async function processBatchWithRetry(
   const attempts = Math.max(1, options.retries);
 
   for (let attempt = 0; attempt < attempts; attempt++) {
+    const controller = new AbortController();
+    let timedOut = false;
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+
     try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+          reject(new Error("Translation timeout"));
+        }, Math.max(1, options.timeoutMs));
+      });
+
       const batchResults = await Promise.race([
-        provider.translateBatch(batch),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("Translation timeout")),
-            options.timeoutMs,
-          ),
-        ),
+        provider.translateBatch(batch, { signal: controller.signal }),
+        timeoutPromise,
       ]);
 
       // Merge results
@@ -72,11 +79,15 @@ async function processBatchWithRetry(
 
       return;
     } catch (error) {
-      lastError = error as Error;
+      lastError = timedOut ? new Error("Translation timeout") : (error as Error);
       if (attempt < attempts - 1) {
         // Exponential backoff
         const delay = Math.pow(2, attempt) * 500;
         await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    } finally {
+      if (timeoutHandle !== undefined) {
+        clearTimeout(timeoutHandle);
       }
     }
   }
