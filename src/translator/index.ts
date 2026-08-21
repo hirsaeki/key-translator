@@ -1,5 +1,12 @@
 import { TranslationProvider, TranslatorConfig } from "../types";
 
+export function getTranslationOrSource(
+  translations: Map<string, string>,
+  source: string,
+): string {
+  return translations.get(source) ?? source;
+}
+
 export async function translateBatch(
   texts: string[],
   provider: TranslationProvider,
