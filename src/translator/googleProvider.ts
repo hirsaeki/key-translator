@@ -1,4 +1,8 @@
-import { TranslationProvider, TranslatorConfig } from "../types";
+import {
+  TranslationProvider,
+  TranslationRequestOptions,
+  TranslatorConfig,
+} from "../types";
 
 export class GoogleProvider implements TranslationProvider {
   private config: TranslatorConfig;
@@ -7,7 +11,10 @@ export class GoogleProvider implements TranslationProvider {
     this.config = config;
   }
 
-  async translateBatch(texts: string[]): Promise<Map<string, string>> {
+  async translateBatch(
+    texts: string[],
+    options?: TranslationRequestOptions,
+  ): Promise<Map<string, string>> {
     const results = new Map<string, string>();
 
     if (!this.config.google?.apiKey) {
@@ -28,6 +35,7 @@ export class GoogleProvider implements TranslationProvider {
             target: this.config.targetLanguage,
             format: "text",
           }),
+          signal: options?.signal,
         },
       );
 
