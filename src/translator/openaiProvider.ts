@@ -1,4 +1,8 @@
-import { TranslationProvider, TranslatorConfig } from "../types";
+import {
+  TranslationProvider,
+  TranslationRequestOptions,
+  TranslatorConfig,
+} from "../types";
 
 type BatchTranslation = {
   id: string | number;
@@ -81,7 +85,10 @@ export class OpenAIProvider implements TranslationProvider {
     this.config = config;
   }
 
-  async translateBatch(texts: string[]): Promise<Map<string, string>> {
+  async translateBatch(
+    texts: string[],
+    options?: TranslationRequestOptions,
+  ): Promise<Map<string, string>> {
     if (!this.config.openai?.apiKey) {
       throw new Error("OpenAI API key not configured");
     }
@@ -144,6 +151,7 @@ export class OpenAIProvider implements TranslationProvider {
         Authorization: `Bearer ${this.config.openai.apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal: options?.signal,
     });
 
     if (!response.ok) {
