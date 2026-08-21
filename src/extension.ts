@@ -6,7 +6,10 @@ import {
   applyReplacementsToSource,
 } from "./preview/previewProvider";
 import { CacheManager } from "./cache/cacheManager";
-import { translateBatch } from "./translator/index";
+import {
+  getTranslationOrSource,
+  translateBatch,
+} from "./translator/index";
 import { MacOSShortcutsProvider } from "./translator/macosShortcutsProvider";
 import { OpenAIProvider } from "./translator/openaiProvider";
 import { GoogleProvider } from "./translator/googleProvider";
@@ -206,7 +209,7 @@ async function doTranslate(
     progress.report({ message: "Generating preview..." });
 
     const replacements: Replacement[] = validNodes.map((node) => {
-      let translated = translations.get(node.value) || node.originalText;
+      let translated = getTranslationOrSource(translations, node.value);
 
       const langId = document.languageId;
       if (
@@ -348,10 +351,10 @@ function getConfig(): TranslatorConfig {
       maxEntries: config.get("cache.maxEntries", 10000),
     },
     providerOptions: {
-      maxBatchSize: config.get("providerOptions.maxBatchSize", 50),
-      concurrency: config.get("providerOptions.concurrency", 3),
-      retries: config.get("providerOptions.retries", 5),
-      timeoutMs: config.get("providerOptions.timeoutMs", 60000),
+      maxBatchSize: config.get("providerOptions.maxBatchSize", 10),
+      concurrency: config.get("providerOptions.concurrency", 2),
+      retries: config.get("providerOptions.retries", 2),
+      timeoutMs: config.get("providerOptions.timeoutMs", 120000),
     },
     macos: {
       shortcutsName: config.get("macos.shortcutsName", "Translate to Chinese"),

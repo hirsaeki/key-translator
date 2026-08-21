@@ -111,6 +111,7 @@ export class JsonParser implements Parser {
       value,
       isBlockScalar: false,
       quoteType: "double",
+      replaceInsideQuotes: true,
     };
 
     if (hasTemplateMarkers(value, skipPatterns)) {

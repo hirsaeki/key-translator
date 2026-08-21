@@ -1,5 +1,9 @@
 import * as crypto from "crypto";
-import { TranslationProvider, TranslatorConfig } from "../types";
+import {
+  TranslationProvider,
+  TranslationRequestOptions,
+  TranslatorConfig,
+} from "../types";
 
 function sha256(
   message: string,
@@ -88,7 +92,10 @@ export class TencentProvider implements TranslationProvider {
     this.config = config;
   }
 
-  async translateBatch(texts: string[]): Promise<Map<string, string>> {
+  async translateBatch(
+    texts: string[],
+    options?: TranslationRequestOptions,
+  ): Promise<Map<string, string>> {
     const results = new Map<string, string>();
 
     if (!this.config.tencent?.secretId || !this.config.tencent?.secretKey) {
@@ -149,6 +156,7 @@ export class TencentProvider implements TranslationProvider {
         method: httpRequestMethod,
         headers,
         body: payload,
+        signal: options?.signal,
       });
 
       if (!response.ok) {
