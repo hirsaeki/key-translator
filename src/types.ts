@@ -11,6 +11,7 @@ export interface NodeInfo {
   indentLevel?: number;
   skipReason?: string;
   isComment?: boolean;
+  replaceInsideQuotes?: boolean;
 }
 
 export interface Replacement {
@@ -61,6 +62,13 @@ export interface TranslatorConfig {
   };
 }
 
+export interface TranslationRequestOptions {
+  signal?: AbortSignal;
+}
+
 export interface TranslationProvider {
-  translateBatch(texts: string[], options?: any): Promise<Map<string, string>>;
+  translateBatch(
+    texts: string[],
+    options?: TranslationRequestOptions,
+  ): Promise<Map<string, string>>;
 }
