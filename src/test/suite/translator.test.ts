@@ -1,8 +1,18 @@
 import * as assert from "assert";
-import { translateBatch } from "../../translator";
+import { getTranslationOrSource, translateBatch } from "../../translator";
 import { TranslationProvider } from "../../types";
 
 suite("Translator Test Suite", () => {
+  test("Uses the semantic source value when a translation is missing", () => {
+    const source = 'quoted "value" \\ path\nnext';
+    assert.strictEqual(getTranslationOrSource(new Map(), source), source);
+  });
+
+  test("Preserves an explicit empty translation", () => {
+    const translations = new Map([["Original", ""]]);
+    assert.strictEqual(getTranslationOrSource(translations, "Original"), "");
+  });
+
   test("Propagates a provider failure after retries are exhausted", async () => {
     const provider: TranslationProvider = {
       translateBatch: async () => {
