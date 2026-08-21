@@ -60,6 +60,11 @@ export function applyReplacementsToSource(
     if (meta.isComment) {
       const indent = " ".repeat(getIndentLevel(originalText, startOffset));
       newValue = `${indent}# ${replacementText}`;
+    } else if (meta.replaceInsideQuotes) {
+      // JSON parsers replace only the contents of an existing quoted string.
+      // The caller already escaped the replacement for JSON, so keep the
+      // original outer quotes rather than adding another pair here.
+      newValue = replacementText;
     } else if (meta.isBlockScalar) {
       // Handle block scalar
       newValue = formatBlockScalar(replacementText, meta, original);
