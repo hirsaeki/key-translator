@@ -21,4 +21,34 @@ suite("Translator Test Suite", () => {
       /invalid batch response/,
     );
   });
+
+  test("Aborts the active provider request on timeout", async () => {
+    let aborted = false;
+    const provider: TranslationProvider = {
+      translateBatch: async (_texts, options) =>
+        new Promise<Map<string, string>>((_, reject) => {
+          options?.signal?.addEventListener(
+            "abort",
+            () => {
+              aborted = true;
+              reject(new Error("request aborted"));
+            },
+            { once: true },
+          );
+        }),
+    };
+
+    await assert.rejects(
+      () =>
+        translateBatch(["Original"], provider, {
+          maxBatchSize: 10,
+          concurrency: 1,
+          retries: 1,
+          timeoutMs: 10,
+        }),
+      /Translation timeout/,
+    );
+
+    assert.strictEqual(aborted, true);
+  });
 });
