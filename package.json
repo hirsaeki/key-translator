@@ -2,7 +2,7 @@
   "name": "key-translator",
   "displayName": "Key Translator",
   "description": "Translate values for specific keys in YAML or JSON files with a read-only preview.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "yingqi",
   "engines": {
     "vscode": "^1.80.0"
@@ -186,22 +186,22 @@
         },
         "keyTranslator.providerOptions.maxBatchSize": {
           "type": "number",
-          "default": 50,
+          "default": 10,
           "description": "Maximum batch size for translation"
         },
         "keyTranslator.providerOptions.concurrency": {
           "type": "number",
-          "default": 3,
+          "default": 2,
           "description": "Maximum concurrent translation requests"
         },
         "keyTranslator.providerOptions.retries": {
           "type": "number",
-          "default": 3,
+          "default": 2,
           "description": "Number of retries for failed translations"
         },
         "keyTranslator.providerOptions.timeoutMs": {
           "type": "number",
-          "default": 20000,
+          "default": 120000,
           "description": "Timeout for translation requests in milliseconds"
         },
         "keyTranslator.promptSettings.systemPrompt": {
